@@ -5,15 +5,21 @@
 
 #include "./Headers/Efi/Efi.h"
 
-unsigned long long EFIAPI Main(void *ImageHandle __attribute__((unused)), Efi_SyetemTable *SystemTable)
+Efi_Status efiapi Main(void *ImageHandle unused, Efi_SyetemTable *SystemTable)
 {
-    SystemTable->ConsoleOutput->ClearScreen(SystemTable->ConsoleOutput);
+    Efi_ClearScreen(SystemTable->ConsoleOutput);
 
-    SystemTable->ConsoleOutput->OutputString(SystemTable->ConsoleOutput,
-                                             L"CuberOS Launcher Beta v1.0\r\n");
+    Efi_Print(SystemTable->ConsoleOutput, L"CuberOS Launcher Beta v1.0\r\n");
+    Efi_Print(SystemTable->ConsoleOutput, L"Hello World!\r\n");
 
-    SystemTable->ConsoleOutput->OutputString(SystemTable->ConsoleOutput,
-                                             L"Hello World!\r\n");
-    while (1)
-        ;
+    while (true)
+    {
+        uint16 buffer[3];
+
+        Efi_Get(SystemTable->ConsoleInput, buffer);
+
+        Efi_Print(SystemTable->ConsoleOutput, buffer);
+    }
+
+    return Efi_Success;
 }

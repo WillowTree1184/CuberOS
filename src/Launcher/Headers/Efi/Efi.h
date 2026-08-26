@@ -6,8 +6,8 @@
 #ifndef __COL_EFI_H__
 #define __COL_EFI_H__
 
-#include "./EfiApi.h"
+#include "./EfiMacros.h"
+#include "./Protocol/Protocols.h"
 #include "./SystemTable.h"
-#include "./Protocol/Protocol.h"
 
 #endif

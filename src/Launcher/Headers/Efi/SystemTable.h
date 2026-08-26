@@ -8,12 +8,14 @@
 #ifndef __COL_EFI_SYSTEM_TABLE_H__
 #define __COL_EFI_SYSTEM_TABLE_H__
 
-#include "./Protocol/SimpleTextOutout.h"
+#include "./Efi.h"
 
 typedef struct
 {
-    char _gap[60];
-    Efi_Protocol_SimpleTextOutout *ConsoleOutput;
+    char _buf[44];
+    Efi_Protocol_SimpleTextInput *ConsoleInput;
+    unsigned long long _buf2;
+    Efi_Protocol_SimpleTextOutput *ConsoleOutput;
 } Efi_SyetemTable;
 
 #endif

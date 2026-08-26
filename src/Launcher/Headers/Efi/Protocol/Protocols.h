@@ -7,5 +7,6 @@
 #define __COL_EFI_PROTOCOL_H__
 
 #include "./SimpleTextOutout.h"
+#include "./SimpleTextInput.h"
 
 #endif
