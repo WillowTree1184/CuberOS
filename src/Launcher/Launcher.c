@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 WillowTree1184 <xucx_2020@163.com>
 
-#include "./Headers/Efi/Efi.h"
+#include <Efi/Efi.h>
 
 Efi_Status efiapi Main(void *ImageHandle unused, Efi_SyetemTable *SystemTable)
 {

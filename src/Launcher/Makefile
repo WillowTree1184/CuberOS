@@ -3,32 +3,38 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 WillowTree1184 <xucx_2020@163.com>
 
-SRC_DIR ?= $(CURDIR)/..
+ARCH		?= x86_64
+BUILD_ROOT	?= $(CURDIR)/../../build/$(ARCH)
 
-MAKE_PLUGIN_DIR := $(SRC_DIR)/Tools/MakefilePlugin
-include $(MAKE_PLUGIN_DIR)/rwildcard.mk
+SRC			?= $(CURDIR)
+INC_ROOT	:= $(SRC)/Headers
 
-BUILDED_DIR_NAME	?= Builded
-BUILDED_DIR 		:= $(CURDIR)/$(BUILDED_DIR_NAME)
+CFLAGS		+= -target $(ARCH)-pc-win32-coff -I $(INC_ROOT)
+LDFLAGS	:= -subsystem:efi_application -entry:Main -nodefaultlib -dll
+ifeq ($(ARCH),x86_64)
+    TARGET_EFI	:= BootX64.efi
+    TARGET_LIB	:= BootX64.lib
+else ifeq ($(ARCH),aarch64)
+    TARGET_EFI	:= BootAA64.efi
+    TARGET_LIB	:= BootAA64.lib
+endif
 
-CC			?= clang
-CC_FLAGS	:= -target x86_64-pc-win32-coff -ffreestanding -fshort-wchar -mno-red-zone -fno-stack-protector -fno-builtin
+.PHONY: all build clean
 
-LD			?= lld-link
-LD_FLAGS	:= -subsystem:efi_application -entry:Main -nodefaultlib -dll
+all: build clean
 
-HEADERS_DIR		:= $(CURDIR)/Headers
-HEADER_FILES	:= $(call rwildcard, $(HEADERS_DIR)/, *.h)
+# Build
+build: $(TARGET_EFI)
+	@mkdir -p "$(BUILD_ROOT)/Efi/Boot/"
+	@cp "$(TARGET_EFI)" "$(BUILD_ROOT)/Efi/Boot/$(TARGET_EFI)"
+	@cp "$(TARGET_LIB)" "$(BUILD_ROOT)/Efi/Boot/$(TARGET_LIB)"
 
-.PHONY: all
-all: $(BUILDED_DIR) $(BUILDED_DIR)/BootX64.efi
+$(TARGET_EFI): Launcher.o
+	@$(LD) $(LDFLAGS) "$<" $(LD_OUT)"$@"
 
-.PHONY: $(BUILDED_DIR)
-$(BUILDED_DIR):
-	@mkdir -p $@
+%.o: %.c
+	@$(CC) $(CFLAGS) -c "$<" $(CC_OUT)"$@"
 
-%.efi: Launcher.o
-	@$(LD) $(LD_FLAGS) "$<" -out:"$@"
-
-%.o: %.c $(HEADER_FILES)
-	@$(CC) $(CC_FLAGS) -c "$<" -o "$@"
+# Clean
+clean:
+	@rm -f "Launcher.o" "$(TARGET_EFI)" "$(TARGET_LIB)"

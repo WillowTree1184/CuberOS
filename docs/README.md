@@ -8,7 +8,7 @@ Make sure that you have the following installed:
 
 - make
 - qemu (qemu-system-x86_64)
-- ovmf (OVMF_CODE_4M.fd, OVMF_VARS_4M.fd)
+- OVMF (OVMF_CODE_4M.fd, OVMF_VARS_4M.fd)
 - clang (clang, lld-link)
 
 # Quick Start
