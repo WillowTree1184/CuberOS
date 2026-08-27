@@ -1,0 +1,82 @@
+#!/usr/bin/env python3
+import sys
+import os
+import subprocess
+import tempfile
+
+def main():
+    args = sys.argv[1:]
+
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    coaf_ld = os.path.join(script_dir, '..', 'bin', 'coaf-ld')
+
+    base_flags = [
+        '-x', 'c++',
+        '-fPIC',
+        '-ffreestanding',
+        '-fno-exceptions',
+        '-fno-rtti',
+    ]
+
+    # Compile-only mode
+    if '-c' in args:
+        cmd = ['clang'] + base_flags + args
+        subprocess.run(cmd, check=True)
+        return
+
+    # Link mode: separate compile and link phases
+    output = 'a.coaf'
+    source_files: list[str] = []
+    object_files: list[str] = []
+    other_args: list[str] = []
+
+    i = 0
+    while i < len(args):
+        arg = args[i]
+        if arg == '-o' and i + 1 < len(args):
+            output = args[i + 1]
+            i += 2
+        elif arg.endswith(('.cpp', '.c', '.cc', '.cxx')):
+            source_files.append(arg)
+            i += 1
+        elif arg.endswith(('.o', '.a')):
+            object_files.append(arg)
+            i += 1
+        elif os.path.isfile(arg) and not arg.startswith('-'):
+            if arg.endswith('.o') or arg.endswith('.a'):
+                object_files.append(arg)
+            else:
+                source_files.append(arg)
+            i += 1
+        else:
+            other_args.append(arg)
+            i += 1
+
+    # Compile source files to temporary object files
+    temp_objects: list[str] = []
+    try:
+        for src in source_files:
+            fd, tmp_o = tempfile.mkstemp(suffix='.o')
+            os.close(fd)
+            temp_objects.append(tmp_o)
+
+            cmd = ['clang'] + base_flags + ['-c', src, '-o', tmp_o] + other_args
+            subprocess.run(cmd, check=True)
+
+        # Link all object files
+        all_objects = temp_objects + object_files
+        if not all_objects:
+            print("Error: no input files for linking", file=sys.stderr)
+            sys.exit(1)
+
+        cmd = [coaf_ld, '-o', output] + all_objects
+        subprocess.run(cmd, check=True)
+    finally:
+        for tmp in temp_objects:
+            try:
+                os.unlink(tmp)
+            except:
+                pass
+
+if __name__ == '__main__':
+    main()

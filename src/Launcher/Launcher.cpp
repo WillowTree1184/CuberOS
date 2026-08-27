@@ -75,10 +75,10 @@ efi::Status efiapi Main(efi::Handle imageHandle, efi::SystemTable *systemTable)
     // Read profile
     efi::uint16 *buffer;
     efi::uintn fileSize;
-    status = efi::ReadFile(root, efi::ToU16(L"Efi\\Boot\\Profile"), (void **)&buffer, &fileSize, systemTable);
+    status = efi::ReadFile(root, efi::ToU16(L"Preloader\\Preloader.app"), (void **)&buffer, &fileSize, systemTable);
     if (efi::IsError(status))
     {
-        ExitByError(status, efi::ToU16(L"Can NOT read file"), imageHandle, systemTable);
+        ExitByError(status, efi::ToU16(L"Can NOT load preloader"), imageHandle, systemTable);
         return status;
     }
     efi::Print(systemTable->ConsoleOutput, efi::ToU16(L"Success: Read file\r\n"));

@@ -27,7 +27,7 @@ namespace efi
         inline constexpr Guid SimpleFileSystem = {0x0964e5b22, 0x6459, 0x11d2, {0x8e, 0x39, 0x00, 0xa0, 0xc9, 0x69, 0x72, 0x3b}};
     }
 
-    Status OpenVolume(protocol::File **root, SystemTable *systemTable)
+    Status efiapi OpenVolume(protocol::File **root, SystemTable *systemTable)
     {
         Status status;
 
@@ -35,6 +35,7 @@ namespace efi
         status = systemTable->BootServices->LocateProtocol(&efi::guid::SimpleFileSystem, nullptr, (void **)&simpleFileSystem);
         if (efi::IsError(status))
         {
+            Print(systemTable->ConsoleOutput, ToU16(L"LOCATE ERROR\r\n"));
             return status;
         }
 

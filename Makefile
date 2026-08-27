@@ -13,17 +13,14 @@ endif
 export ARCH
 
 # Global directories
-BUILD_DIR			:= $(CURDIR)/Build
-export BUILD_ROOT	:= $(BUILD_DIR)/$(ARCH)
-export PROJECT_SRC	:= $(CURDIR)/src
+BUILD_DIR				:= $(CURDIR)/Build
+export BUILD_ROOT		:= $(BUILD_DIR)/$(ARCH)
+export SRC				:= $(CURDIR)/src
+export GLOBAL_HEADERS	:= $(BUILD_DIR)/$(ARCH)
 
 # Global tool chain
-export CC		:= clang
-export CC_OUT	:= -o 
-export CFLAGS	:= -ffreestanding -fshort-wchar -mno-red-zone -fno-stack-protector -fno-builtin -Wall -Wextra -O2
-export CXXFLAGS	:= -ffreestanding -fno-exceptions -fno-rtti -fno-threadsafe-statics -fno-use-cxa-atexit -mno-red-zone -fshort-wchar -fno-stack-protector -fno-builtin -Wall -Wextra -O2 -std=c++20
-export LD		:= lld-link
-export LD_OUT	:= -out:
+export CXX		:= $(SRC)/CoafLinker/scripts/coaf-clang
+export CXXFLAGS	:= -ffreestanding -fno-exceptions -fno-rtti -fno-threadsafe-statics -fno-use-cxa-atexit -mno-red-zone -fshort-wchar -fno-stack-protector -fno-builtin -Wall -Wextra -O2 -std=c++20 -I $(GLOBAL_HEADERS)
 
 # QEMU
 QEMU		?= qemu-system-$(ARCH)
@@ -48,39 +45,44 @@ else ifeq ($(ARCH), aarch64)
 endif
 
 # Modules
-MODULES	:= $(notdir $(patsubst %/Makefile,%,$(wildcard $(PROJECT_SRC)/*/Makefile)))
+# MODULES	:= $(notdir $(patsubst %/Makefile,%,$(wildcard $(SRC)/*/Makefile)))
+MODULES	:= CoafLinker Launcher Preloader
+
+# Make
+MKFLAG	:= -j$(( $(nproc) > 1 ? $(nproc) - 1 : 1 ))
 
 .PHONY: all info build $(MODULES) clean clean-module clean-build
 
-all: info clean-build build run clean-module
+all: info clean-build build run
 
 # Show Info
 info:
 	@echo "ARCH	$(ARCH)"
-	@echo "SRC	$(PROJECT_SRC)"
+	@echo "SRC	$(SRC)"
 	@echo "OUT	$(BUILD_DIR)"
 	@echo "CC	$(CC)"
 	@echo "LD	$(LD)"
 
 # Build module
 build: $(MODULES)
+
 $(MODULES):
 	@echo
 	@echo "BUILD	$@"
-	@$(MAKE) -C "$(PROJECT_SRC)/$@" build SRC="$(PROJECT_SRC)/$@"
+	@$(MAKE) -C "$(SRC)/$@" build $(MKFLAG)
 
 # Run
 run: | $(BUILD_ROOT)
 	@echo
 	@echo "RUN	$(QEMU)"
 ifeq ($(ARCH), x86_64)
-	@$(QEMU) \
+	$(QEMU) \
 		-drive if=pflash,format=raw,readonly=on,file=$(OVMF_CODE) \
 		-drive if=pflash,format=raw,file=$(OVMF_VARS) \
 		-drive format=raw,file=fat:rw:$(BUILD_ROOT) \
 		-m 512M -smp 2 -vga std
 else ifeq ($(ARCH), aarch64)
-	@$(QEMU) \
+	$(QEMU) \
 		-drive if=pflash,format=raw,readonly=on,file=$(AAVMF_CODE) \
 		-drive if=pflash,format=raw,file=$(AAVMF_VARS) \
 		-drive format=raw,file=fat:rw:$(BUILD_ROOT) \
@@ -94,7 +96,7 @@ clean-module:
 	@for module in $(MODULES); do \
 		echo; \
 		echo "Clean	$$module"; \
-		$(MAKE) -C "$(PROJECT_SRC)/$$module" clean; \
+		$(MAKE) -C "$(SRC)/$$module" clean; \
 	done
 
 

@@ -172,6 +172,9 @@ namespace efi
         Status(efiapi *ReinstallProtocolInterface)(Handle current, const Guid *protocol, void *oldInterface, void *newInterface);
         Status(efiapi *UninstallProtocolInterface)(Handle current, const Guid *protocol, void *interface);
         Status(efiapi *HandleProtocol)(Handle current, const Guid *protocol, void **interface);
+
+        void *Reserved;
+
         Status(efiapi *RegisterProtocolNotify)(const Guid *protocol, Event event, void **registration);
         Status(efiapi *LocateHandle)(int searchType, const Guid *protocol, void *searchKey, uintn *bufferSize, Handle *buffer);
         Status(efiapi *LocateDevicePath)(const Guid *protocol, void **devicePath, Handle *device);

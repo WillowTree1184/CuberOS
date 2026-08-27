@@ -6,12 +6,14 @@
 ARCH		?= x86_64
 BUILD_ROOT	?= $(CURDIR)/../../build/$(ARCH)
 
-SRC			?= $(CURDIR)
-INC_ROOT	:= $(SRC)/Headers
+INC_ROOT	:= $(CURDIR)/Headers
 
-CFLAGS		+= -target $(ARCH)-pc-win32-coff -I $(INC_ROOT)
-CXXFLAGS	+= -target $(ARCH)-pc-win32-coff -I $(INC_ROOT)
+L_CXX			:= clang
+L_CXXFLAGS		:= -ffreestanding -fno-exceptions -fno-rtti -fno-threadsafe-statics -fno-use-cxa-atexit -mno-red-zone -fshort-wchar -fno-stack-protector -fno-builtin -Wall -Wextra -O2 -std=c++20 -I $(GLOBAL_HEADERS) -target $(ARCH)-pc-win32-coff -I $(INC_ROOT)
+
+LD		:= lld-link
 LDFLAGS	:= -subsystem:efi_application -entry:Main -nodefaultlib -dll
+
 ifeq ($(ARCH),x86_64)
     TARGET_EFI	:= BootX64.efi
     TARGET_LIB	:= BootX64.lib
@@ -25,17 +27,18 @@ endif
 all: build clean
 
 # Build
-build: $(TARGET_EFI)
+build: Build/$(TARGET_EFI)
 	@mkdir -p "$(BUILD_ROOT)/Efi/Boot/"
-	@cp "$(TARGET_EFI)" "$(BUILD_ROOT)/Efi/Boot/$(TARGET_EFI)"
-	@cp "$(TARGET_LIB)" "$(BUILD_ROOT)/Efi/Boot/$(TARGET_LIB)"
+	@cp -r Build/* "$(BUILD_ROOT)/Efi/Boot/"
 
-$(TARGET_EFI): Launcher.o
-	@$(LD) $(LDFLAGS) "$<" $(LD_OUT)"$@"
+Build/$(TARGET_EFI): Bin/Launcher.o
+	@mkdir -p Build
+	$(LD) $(LDFLAGS) "$<" -out:"$@"
 
-%.o: %.cpp
-	@$(CC) $(CXXFLAGS) -c "$<" $(CC_OUT)"$@"
+Bin/%.o: %.cpp
+	@mkdir -p Bin
+	$(L_CXX) $(L_CXXFLAGS) -c "$<" -o "$@"
 
 # Clean
 clean:
-	@rm -f "Launcher.o" "$(TARGET_EFI)" "$(TARGET_LIB)"
+	@rm -rf Bin Build
