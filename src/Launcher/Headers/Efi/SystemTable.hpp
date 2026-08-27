@@ -84,6 +84,42 @@ namespace efi
         bool SetsToZero;
     };
 
+    namespace guid
+    {
+        inline constexpr Guid GlobalVariableGuid = {0x8BE4DF61, 0x93CA, 0x11d2, {0xAA, 0x0D, 0x00, 0xE0, 0x98, 0x03, 0x2B, 0x8C}};
+    }
+
+    enum class VariableAttribute : uint32
+    {
+        None = 0x00000000,
+        NonVolatile = 0x00000001,
+        BootServiceAccess = 0x00000002,
+        RuntimeAccess = 0x00000004,
+        HardwareErrorRecord = 0x00000008,
+        AuthenticatedWriteAccess = 0x00000010,
+        TimeBasedAuthenticatedWriteAccess = 0x00000020,
+        AppendWrite = 0x00000040,
+        EnhancedAuthenticatedAccess = 0x00000080
+    };
+
+    constexpr VariableAttribute operator|(VariableAttribute a, VariableAttribute b) noexcept
+    {
+        return static_cast<VariableAttribute>(
+            static_cast<uint32>(a) | static_cast<uint32>(b));
+    }
+
+    constexpr VariableAttribute operator&(VariableAttribute a, VariableAttribute b) noexcept
+    {
+        return static_cast<VariableAttribute>(
+            static_cast<uint32>(a) & static_cast<uint32>(b));
+    }
+
+    constexpr VariableAttribute &operator|=(VariableAttribute &a, VariableAttribute b) noexcept
+    {
+        a = a | b;
+        return a;
+    }
+
     struct RuntimeServices
     {
         TableHeader Header;
@@ -97,9 +133,9 @@ namespace efi
 
         Status(efiapi *ConvertPointer)(uintn debugDisposition, void **address);
 
-        Status(efiapi *GetVariable)(char16 *variableName, Guid *vendorGuid, uint32 *attributes, uintn *dataSize, void *data);
-        Status(efiapi *GetNextVariableName)(uintn *variableNameSize, char16 *variableName, Guid *vendorGuid);
-        Status(efiapi *SetVariable)(char16 *variableName, Guid *vendorGuid, uint32 attributes, uintn dataSize, void *data);
+        Status(efiapi *GetVariable)(char16 *variableName, const Guid *vendorGuid, uint32 *attributes, uintn *dataSize, void *data);
+        Status(efiapi *GetNextVariableName)(uintn *variableNameSize, char16 *variableName, const Guid *vendorGuid);
+        Status(efiapi *SetVariable)(char16 *variableName, const Guid *vendorGuid, VariableAttribute attributes, uintn dataSize, void *data);
 
         Status(efiapi *GetNextHighMonotonicCount)(uint32 *highCount);
 
@@ -132,15 +168,14 @@ namespace efi
         Status(efiapi *CloseEvent)(Event event);
         Status(efiapi *CheckEvent)(Event event);
 
-        Status(efiapi *InstallProtocolInterface)(Handle *current, Guid *protocol, int interfaceType, void *interface);
-        Status(efiapi *ReinstallProtocolInterface)(Handle current, Guid *protocol, void *oldInterface, void *newInterface);
-        Status(efiapi *UninstallProtocolInterface)(Handle current, Guid *protocol, void *interface);
-        Status(efiapi *HandleProtocol)(Handle current, Guid *protocol, void **interface);
-        void *Reserved;
-        Status(efiapi *RegisterProtocolNotify)(Guid *protocol, Event event, void **registration);
-        Status(efiapi *LocateHandle)(int searchType, Guid *protocol, void *searchKey, uintn *bufferSize, Handle *buffer);
-        Status(efiapi *LocateDevicePath)(Guid *protocol, void **devicePath, Handle *device);
-        Status(efiapi *InstallConfigurationTable)(Guid *guid, void *table);
+        Status(efiapi *InstallProtocolInterface)(Handle *current, const Guid *protocol, int interfaceType, void *interface);
+        Status(efiapi *ReinstallProtocolInterface)(Handle current, const Guid *protocol, void *oldInterface, void *newInterface);
+        Status(efiapi *UninstallProtocolInterface)(Handle current, const Guid *protocol, void *interface);
+        Status(efiapi *HandleProtocol)(Handle current, const Guid *protocol, void **interface);
+        Status(efiapi *RegisterProtocolNotify)(const Guid *protocol, Event event, void **registration);
+        Status(efiapi *LocateHandle)(int searchType, const Guid *protocol, void *searchKey, uintn *bufferSize, Handle *buffer);
+        Status(efiapi *LocateDevicePath)(const Guid *protocol, void **devicePath, Handle *device);
+        Status(efiapi *InstallConfigurationTable)(const Guid *guid, void *table);
 
         Status(efiapi *LoadImage)(bool bootPolicy, Handle parentImageHandle, void *devicePath, void *sourceBuffer, uintn sourceSize, Handle *imageHandle);
         Status(efiapi *StartImage)(Handle imageHandle, uintn *exitDataSize, char16 **exitData);
@@ -155,13 +190,13 @@ namespace efi
         Status(efiapi *ConnectController)(Handle controllerHandle, Handle *driverImageHandle, void *remainingDevicePath, bool recursive);
         Status(efiapi *DisconnectController)(Handle controllerHandle, Handle driverImageHandle, Handle childHandle);
 
-        Status(efiapi *OpenProtocol)(Handle current, Guid *protocol, void **interface, Handle agentHandle, Handle controllerHandle, uint32 attributes);
-        Status(efiapi *CloseProtocol)(Handle current, Guid *protocol, Handle agentHandle, Handle controllerHandle);
-        Status(efiapi *OpenProtocolInformation)(Handle current, Guid *protocol, void **entryBuffer, uintn *entryCount);
+        Status(efiapi *OpenProtocol)(Handle current, const Guid *protocol, void **interface, Handle agentHandle, Handle controllerHandle, uint32 attributes);
+        Status(efiapi *CloseProtocol)(Handle current, const Guid *protocol, Handle agentHandle, Handle controllerHandle);
+        Status(efiapi *OpenProtocolInformation)(Handle current, const Guid *protocol, void **entryBuffer, uintn *entryCount);
 
         Status(efiapi *ProtocolsPerHandle)(Handle current, Guid ***protocolBuffer, uintn *protocolBufferCount);
-        Status(efiapi *LocateHandleBuffer)(int searchType, Guid *protocol, void *searchKey, uintn *noHandles, Handle **buffer);
-        Status(efiapi *LocateProtocol)(Guid *protocol, void *registration, void **interface);
+        Status(efiapi *LocateHandleBuffer)(int searchType, const Guid *protocol, void *searchKey, uintn *noHandles, Handle **buffer);
+        Status(efiapi *LocateProtocol)(const Guid *protocol, void *registration, void **interface);
         Status(efiapi *InstallMultipleProtocolInterfaces)(Handle *current, ...);
         Status(efiapi *UninstallMultipleProtocolInterfaces)(Handle current, ...);
 

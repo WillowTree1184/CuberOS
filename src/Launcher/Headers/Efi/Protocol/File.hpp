@@ -17,14 +17,21 @@ namespace efi
     {
         return static_cast<FileMode>(static_cast<uint64>(a) | static_cast<uint64>(b));
     }
+
     constexpr FileMode operator&(FileMode a, FileMode b) noexcept
     {
         return static_cast<FileMode>(static_cast<uint64>(a) & static_cast<uint64>(b));
     }
+
     constexpr FileMode &operator|=(FileMode &a, FileMode b) noexcept
     {
         a = a | b;
         return a;
+    }
+
+    constexpr bool Any(FileMode flags, FileMode mask) noexcept
+    {
+        return (static_cast<uint64>(flags) & static_cast<uint64>(mask)) != 0;
     }
 
     // FileAttribute
@@ -44,19 +51,26 @@ namespace efi
     {
         return static_cast<FileAttribute>(static_cast<uint64>(a) | static_cast<uint64>(b));
     }
+
     constexpr FileAttribute operator&(FileAttribute a, FileAttribute b) noexcept
     {
         return static_cast<FileAttribute>(static_cast<uint64>(a) & static_cast<uint64>(b));
     }
+
     constexpr FileAttribute &operator|=(FileAttribute &a, FileAttribute b) noexcept
     {
         a = a | b;
         return a;
     }
 
+    constexpr bool Any(FileAttribute flags, FileAttribute mask) noexcept
+    {
+        return (static_cast<uint64>(flags) & static_cast<uint64>(mask)) != 0;
+    }
+
     namespace guid
     {
-        Guid FileInfo = {0x9576e92, 0x6d3f, 0x11d2, {0x8e, 0x39, 0x0, 0xa0, 0xc9, 0x69, 0x72, 0x3b}};
+        inline constexpr Guid FileInfo = {0x9576e92, 0x6d3f, 0x11d2, {0x8e, 0x39, 0x0, 0xa0, 0xc9, 0x69, 0x72, 0x3b}};
     }
 
     struct FileInfo
@@ -84,8 +98,8 @@ namespace efi
             Status(efiapi *Write)(File *current, uintn *BufferSize, void *Buffer);
             Status(efiapi *GetPosition)(File *current, uint64 *Position);
             Status(efiapi *SetPosition)(File *current, uint64 Position);
-            Status(efiapi *GetInfo)(File *current, Guid *InformationType, uintn *BufferSize, void *Buffer);
-            Status(efiapi *SetInfo)(File *current, Guid *InformationType, uintn BufferSize, void *Buffer);
+            Status(efiapi *GetInfo)(File *current, const Guid *InformationType, uintn *BufferSize, void *Buffer);
+            Status(efiapi *SetInfo)(File *current, const Guid *InformationType, uintn BufferSize, void *Buffer);
             Status(efiapi *Flush)(File *current);
         };
     }

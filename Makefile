@@ -98,7 +98,7 @@ clean-module:
 	done
 
 
-clean-build: | $(BUILD_DIR)
+clean-build:
 	@echo
 	@echo "CLEAN	$(BUILD_DIR)"
 	@rm -rf "$(BUILD_DIR)"
