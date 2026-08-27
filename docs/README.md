@@ -16,7 +16,7 @@ Make sure that you have the following installed:
 Run the following command to build and run the operating system:
 
 ```bash
-make run
+make
 ```
 
 # License

@@ -21,6 +21,7 @@ export PROJECT_SRC	:= $(CURDIR)/src
 export CC		:= clang
 export CC_OUT	:= -o 
 export CFLAGS	:= -ffreestanding -fshort-wchar -mno-red-zone -fno-stack-protector -fno-builtin -Wall -Wextra -O2
+export CXXFLAGS	:= -ffreestanding -fno-exceptions -fno-rtti -fno-threadsafe-statics -fno-use-cxa-atexit -mno-red-zone -fshort-wchar -fno-stack-protector -fno-builtin -Wall -Wextra -O2 -std=c++20
 export LD		:= lld-link
 export LD_OUT	:= -out:
 
@@ -49,19 +50,31 @@ endif
 # Modules
 MODULES	:= $(notdir $(patsubst %/Makefile,%,$(wildcard $(PROJECT_SRC)/*/Makefile)))
 
-.PHONY: all build $(MODULES)
+.PHONY: all info build $(MODULES) clean clean-module clean-build
 
-all: build run clean
+all: info clean-build build run clean-module
+
+# Show Info
+info:
+	@echo "ARCH	$(ARCH)"
+	@echo "SRC	$(PROJECT_SRC)"
+	@echo "OUT	$(BUILD_DIR)"
+	@echo "CC	$(CC)"
+	@echo "LD	$(LD)"
 
 # Build module
 build: $(MODULES)
 $(MODULES):
+	@echo
+	@echo "BUILD	$@"
 	@$(MAKE) -C "$(PROJECT_SRC)/$@" build SRC="$(PROJECT_SRC)/$@"
 
 # Run
 run: | $(BUILD_ROOT)
+	@echo
+	@echo "RUN	$(QEMU)"
 ifeq ($(ARCH), x86_64)
-	$(QEMU) \
+	@$(QEMU) \
 		-drive if=pflash,format=raw,readonly=on,file=$(OVMF_CODE) \
 		-drive if=pflash,format=raw,file=$(OVMF_VARS) \
 		-drive format=raw,file=fat:rw:$(BUILD_ROOT) \
@@ -75,6 +88,17 @@ else ifeq ($(ARCH), aarch64)
 endif
 
 # clean
-clean:
-	@$(foreach i, $(MODULES), $(MAKE) -C "$(PROJECT_SRC)/$i" clean SRC="$(PROJECT_SRC)/$@")
+clean: clean-module clean-build
+
+clean-module:
+	@for module in $(MODULES); do \
+		echo; \
+		echo "Clean	$$module"; \
+		$(MAKE) -C "$(PROJECT_SRC)/$$module" clean; \
+	done
+
+
+clean-build: | $(BUILD_DIR)
+	@echo
+	@echo "CLEAN	$(BUILD_DIR)"
 	@rm -rf "$(BUILD_DIR)"

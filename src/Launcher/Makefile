@@ -10,6 +10,7 @@ SRC			?= $(CURDIR)
 INC_ROOT	:= $(SRC)/Headers
 
 CFLAGS		+= -target $(ARCH)-pc-win32-coff -I $(INC_ROOT)
+CXXFLAGS	+= -target $(ARCH)-pc-win32-coff -I $(INC_ROOT)
 LDFLAGS	:= -subsystem:efi_application -entry:Main -nodefaultlib -dll
 ifeq ($(ARCH),x86_64)
     TARGET_EFI	:= BootX64.efi
@@ -32,8 +33,8 @@ build: $(TARGET_EFI)
 $(TARGET_EFI): Launcher.o
 	@$(LD) $(LDFLAGS) "$<" $(LD_OUT)"$@"
 
-%.o: %.c
-	@$(CC) $(CFLAGS) -c "$<" $(CC_OUT)"$@"
+%.o: %.cpp
+	@$(CC) $(CXXFLAGS) -c "$<" $(CC_OUT)"$@"
 
 # Clean
 clean:
