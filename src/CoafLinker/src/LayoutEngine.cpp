@@ -118,6 +118,11 @@ namespace Linker
                 }
 
                 seg.MemorySize = AlignUp(offset, Coaf::PageSize);
+                // Discard empty segments (both file and memory are empty)
+                if (seg.MemorySize == 0)
+                {
+                    continue;
+                }
                 if (seg.Data.size() < seg.MemorySize)
                 {
                     seg.Data.resize(seg.MemorySize, 0);
@@ -148,10 +153,15 @@ namespace Linker
                     ref.OutputOffset = offset;
                     seg.Sources.push_back(ref);
 
-                    offset += sec.Data.size();
+                    offset += sec.Size;
                 }
 
                 seg.MemorySize = AlignUp(offset, Coaf::PageSize);
+                // Discard empty segments
+                if (seg.MemorySize == 0)
+                {
+                    continue;
+                }
                 seg.Data.clear();
 
                 currentImageOffset = seg.ImageOffset + seg.MemorySize;
@@ -159,6 +169,16 @@ namespace Linker
             }
         }
 
+        // A valid COAF must have at least one segment
+        if (ctx.Segments.empty())
+        {
+            std::cerr << "Error: module has no loadable content; all segments are empty." << std::endl;
+            std::cerr << "       This typically happens with -O2 when the compiler optimizes away" << std::endl;
+            std::cerr << "       all code. Add side effects (e.g., asm volatile) or use -O0 for testing." << std::endl;
+            return false;
+        }
+
+        // Calculate symbol addresses
         for (auto &symPair : ctx.SymbolMap)
         {
             auto &sym = symPair.second;
@@ -168,6 +188,7 @@ namespace Linker
             if (sym.DefSectionIndex >= file.Sections.size())
                 continue;
 
+            bool found = false;
             for (const auto &seg : ctx.Segments)
             {
                 for (const auto &src : seg.Sources)
@@ -184,12 +205,23 @@ namespace Linker
                             if (symName == sym.Name)
                             {
                                 sym.ImageOffset = seg.ImageOffset + src.OutputOffset + isym.Value;
+                                found = true;
                                 break;
                             }
                         }
                         break;
                     }
                 }
+                if (found)
+                    break;
+            }
+
+            if (!found && sym.IsExported)
+            {
+                std::cerr << "Error: exported symbol "
+                          << sym.Name
+                          << " belongs to a discarded empty segment " << std::endl;
+                return false;
             }
         }
 

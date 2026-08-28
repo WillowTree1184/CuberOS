@@ -9,7 +9,7 @@ BUILD_ROOT	?= $(CURDIR)/../../build/$(ARCH)
 INC_ROOT	:= $(CURDIR)/Headers
 
 L_CXX			:= clang
-L_CXXFLAGS		:= -ffreestanding -fno-exceptions -fno-rtti -fno-threadsafe-statics -fno-use-cxa-atexit -mno-red-zone -fshort-wchar -fno-stack-protector -fno-builtin -Wall -Wextra -O2 -std=c++20 -I $(GLOBAL_HEADERS) -target $(ARCH)-pc-win32-coff -I $(INC_ROOT)
+L_CXXFLAGS		:= -ffreestanding -fno-exceptions -fno-rtti -fno-threadsafe-statics -fno-use-cxa-atexit -mno-red-zone -fshort-wchar -fno-stack-protector -fno-builtin -Wall -Wextra -O2 -std=c++20 -I "$(GLOBAL_HEADERS)" -target $(ARCH)-pc-win32-coff -I "$(INC_ROOT)"
 
 LD		:= lld-link
 LDFLAGS	:= -subsystem:efi_application -entry:Main -nodefaultlib -dll
@@ -28,17 +28,17 @@ all: build clean
 
 # Build
 build: Build/$(TARGET_EFI)
-	@mkdir -p "$(BUILD_ROOT)/Efi/Boot/"
-	@cp -r Build/* "$(BUILD_ROOT)/Efi/Boot/"
+	@mkdir -p $(BUILD_ROOT)/Efi/Boot/
+	@cp -r Build/* $(BUILD_ROOT)/Efi/Boot/
 
-Build/$(TARGET_EFI): Bin/Launcher.o
+Build/$(TARGET_EFI): Bin/Launcher.o Bin/Memory.o Bin/EfiStd.o
 	@mkdir -p Build
-	$(LD) $(LDFLAGS) "$<" -out:"$@"
+	$(LD) $(LDFLAGS) $^ -out:$@
 
 Bin/%.o: %.cpp
 	@mkdir -p Bin
-	$(L_CXX) $(L_CXXFLAGS) -c "$<" -o "$@"
+	$(L_CXX) $(L_CXXFLAGS) -c $< -o $@
 
 # Clean
 clean:
-	@rm -rf Bin Build
+	rm -rf Bin Build

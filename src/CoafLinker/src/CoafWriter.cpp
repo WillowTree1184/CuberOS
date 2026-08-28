@@ -33,11 +33,6 @@ namespace Linker
         return offset;
     }
 
-    static U64 AppendU64(std::vector<uint8_t> &buf, U64 value)
-    {
-        return AppendData(buf, &value, sizeof(U64));
-    }
-
     static U64 AddString(Context &ctx, const std::string &str)
     {
         auto it = ctx.StringOffsets.find(str);
@@ -50,6 +45,30 @@ namespace Linker
         ctx.StringTable.push_back(0);
         ctx.StringOffsets[str] = offset;
         return offset;
+    }
+
+    // Try to find the ELF symbol that corresponds to the user-specified entry name.
+    // Handles both C linkage (exact match) and simple Itanium C++ mangling
+    // for a zero-argument function: _Z<N><name>v
+    static std::string ResolveEntryElfName(const Context &ctx)
+    {
+        const std::string &want = ctx.EntrySymbolName;
+
+        // 1. Exact match (C linkage or already mangled)
+        if (ctx.SymbolMap.count(want))
+        {
+            return want;
+        }
+
+        // 2. Simple Itanium mangling for void(void): _Z<N><name>v
+        //    e.g. "main" -> "_Z4mainv"
+        std::string mangled = "_Z" + std::to_string(want.size()) + want + "v";
+        if (ctx.SymbolMap.count(mangled))
+        {
+            return mangled;
+        }
+
+        return "";
     }
 
     bool WriteCoaf(Context &ctx)
@@ -78,62 +97,66 @@ namespace Linker
             ctx.TargetArchId = Coaf::ArchX86_64;
         }
 
-        // Build string table
-        for (const auto &symPair : ctx.SymbolMap)
-        {
-            if (symPair.second.IsExported)
-            {
-                AddString(ctx, symPair.first);
-            }
-        }
-        // Add special symbols if needed
-        if (ctx.HasInitArray)
-        {
-            AddString(ctx, "__init_array_start");
-            AddString(ctx, "__init_array_end");
-        }
+        // Resolve entry symbol
+        std::string entryElfName = ResolveEntryElfName(ctx);
+        bool hasEntry = !entryElfName.empty();
 
-        // Build export symbol table
+        // Collect exported symbols
+        struct ExportEntry
+        {
+            std::string Name;
+            U64 ImageOffset;
+        };
+        std::vector<ExportEntry> exports;
+
         for (const auto &symPair : ctx.SymbolMap)
         {
             if (!symPair.second.IsExported)
                 continue;
-            Coaf::ExportSymbol exp;
-            exp.NameOffset = AddString(ctx, symPair.first);
-            exp.ImageOffset = symPair.second.ImageOffset;
-            ctx.CoafExports.push_back(exp);
+
+            std::string exportName = symPair.first;
+
+            // If this is the entry symbol, rename it to "Main" per COAF spec
+            if (hasEntry && symPair.first == entryElfName)
+            {
+                exportName = "Main";
+            }
+
+            exports.push_back({exportName, symPair.second.ImageOffset});
         }
 
-        // Add init_array symbols to exports
         if (ctx.HasInitArray)
         {
-            Coaf::ExportSymbol startSym;
-            startSym.NameOffset = AddString(ctx, "__init_array_start");
-            startSym.ImageOffset = ctx.InitArrayStart;
-            ctx.CoafExports.push_back(startSym);
-
-            Coaf::ExportSymbol endSym;
-            endSym.NameOffset = AddString(ctx, "__init_array_end");
-            endSym.ImageOffset = ctx.InitArrayEnd;
-            ctx.CoafExports.push_back(endSym);
+            exports.push_back({"__init_array_start", ctx.InitArrayStart});
+            exports.push_back({"__init_array_end", ctx.InitArrayEnd});
         }
 
-        // Sort exports by name
-        std::sort(ctx.CoafExports.begin(), ctx.CoafExports.end(),
-                  [](const Coaf::ExportSymbol &a, const Coaf::ExportSymbol &b)
+        // Sort by name
+        std::sort(exports.begin(), exports.end(),
+                  [](const ExportEntry &a, const ExportEntry &b)
                   {
-                      return a.NameOffset < b.NameOffset;
+                      return a.Name < b.Name;
                   });
 
-        // Actually we need to sort by name bytes, but since we built the string table
-        // in arbitrary order, let's sort by the actual string content
-        std::sort(ctx.CoafExports.begin(), ctx.CoafExports.end(),
-                  [&ctx](const Coaf::ExportSymbol &a, const Coaf::ExportSymbol &b)
-                  {
-                      const char *sa = reinterpret_cast<const char *>(ctx.StringTable.data() + a.NameOffset);
-                      const char *sb = reinterpret_cast<const char *>(ctx.StringTable.data() + b.NameOffset);
-                      return std::strcmp(sa, sb) < 0;
-                  });
+        // Check for duplicates
+        for (size_t i = 1; i < exports.size(); ++i)
+        {
+            if (exports[i].Name == exports[i - 1].Name)
+            {
+                std::cerr << "Error: duplicate export symbol: "
+                          << exports[i].Name << std::endl;
+                return false;
+            }
+        }
+
+        // Build string table and COAF export table
+        for (const auto &entry : exports)
+        {
+            Coaf::ExportSymbol exp;
+            exp.NameOffset = AddString(ctx, entry.Name);
+            exp.ImageOffset = entry.ImageOffset;
+            ctx.CoafExports.push_back(exp);
+        }
 
         // Calculate total image size
         U64 imageSize = 0;
@@ -145,7 +168,19 @@ namespace Linker
         }
         imageSize = AlignUp(imageSize, Coaf::PageSize);
 
-        // Build COAF structures
+        // Build COAF segment descriptors
+        for (const auto &seg : ctx.Segments)
+        {
+            Coaf::Segment cs;
+            cs.ImageOffset = seg.ImageOffset;
+            cs.FileOffset = 0;
+            cs.FileSize = seg.Data.size();
+            cs.MemorySize = seg.MemorySize;
+            cs.Permissions = seg.Permissions;
+            ctx.CoafSegments.push_back(cs);
+        }
+
+        // Fill MainTable
         ctx.MainTable.ArchId = ctx.TargetArchId;
         ctx.MainTable.ImageSize = imageSize;
         ctx.MainTable.SegmentCount = ctx.Segments.size();
@@ -156,11 +191,10 @@ namespace Linker
         ctx.MainTable.StringTableSize = ctx.StringTable.size();
         ctx.MainTable.SignatureBlobOffset = 0;
 
-        // Serialize to buffer
+        // === Layout file contents ===
         std::vector<uint8_t> buf;
 
-        // Header
-        (void)0; // header starts at offset 0
+        // Header at offset 0
         Coaf::Header hdr;
         hdr.Magic = Coaf::MagicImage;
         hdr.Version = 1;
@@ -168,25 +202,14 @@ namespace Linker
         AppendData(buf, &hdr, sizeof(Coaf::Header));
 
         // MainTable
-        // MainTable starts at buf.size()
         AppendData(buf, &ctx.MainTable, sizeof(Coaf::MainTableV1));
 
         // Segment table
         U64 segTableOffset = 0;
-        if (!ctx.Segments.empty())
+        if (!ctx.CoafSegments.empty())
         {
             segTableOffset = AlignUp(buf.size(), 8);
             buf.resize(segTableOffset);
-            for (const auto &seg : ctx.Segments)
-            {
-                Coaf::Segment cs;
-                cs.ImageOffset = seg.ImageOffset;
-                cs.FileOffset = 0; // Will be patched later
-                cs.FileSize = seg.Data.size();
-                cs.MemorySize = seg.MemorySize;
-                cs.Permissions = seg.Permissions;
-                ctx.CoafSegments.push_back(cs);
-            }
             AppendData(buf, ctx.CoafSegments.data(), ctx.CoafSegments.size() * sizeof(Coaf::Segment));
         }
 
@@ -213,7 +236,7 @@ namespace Linker
             buf.resize(relocTableOffset);
             for (U64 addr : ctx.CoafRelocations)
             {
-                AppendU64(buf, addr);
+                AppendData(buf, &addr, sizeof(U64));
             }
         }
 
@@ -245,16 +268,29 @@ namespace Linker
         ctx.MainTable.RelocationTableOffset = relocTableOffset;
         ctx.MainTable.StringTableOffset = stringTableOffset;
 
-        // Re-serialize with patched offsets
+        // Patch export symbol NameOffsets to absolute FileOffsets
+        for (auto &exp : ctx.CoafExports)
+        {
+            exp.NameOffset += stringTableOffset;
+        }
+
+        // === Re-serialize with all patches applied ===
         buf.clear();
+
+        // Header
         AppendData(buf, &hdr, sizeof(Coaf::Header));
+
+        // MainTable
         AppendData(buf, &ctx.MainTable, sizeof(Coaf::MainTableV1));
 
+        // Segment table
         if (segTableOffset > 0)
         {
             buf.resize(segTableOffset);
             AppendData(buf, ctx.CoafSegments.data(), ctx.CoafSegments.size() * sizeof(Coaf::Segment));
         }
+
+        // Export symbol table
         if (exportTableOffset > 0)
         {
             buf.resize(AlignUp(buf.size(), 8));
@@ -262,6 +298,8 @@ namespace Linker
                 buf.resize(exportTableOffset);
             AppendData(buf, ctx.CoafExports.data(), ctx.CoafExports.size() * sizeof(Coaf::ExportSymbol));
         }
+
+        // Relocation table
         if (relocTableOffset > 0)
         {
             buf.resize(AlignUp(buf.size(), 8));
@@ -269,9 +307,11 @@ namespace Linker
                 buf.resize(relocTableOffset);
             for (U64 addr : ctx.CoafRelocations)
             {
-                AppendU64(buf, addr);
+                AppendData(buf, &addr, sizeof(U64));
             }
         }
+
+        // String table
         if (stringTableOffset > 0)
         {
             buf.resize(AlignUp(buf.size(), 8));
@@ -280,7 +320,7 @@ namespace Linker
             AppendData(buf, ctx.StringTable.data(), ctx.StringTable.size());
         }
 
-        // Segment data again with patched FileOffsets
+        // Segment data
         for (size_t i = 0; i < ctx.Segments.size(); ++i)
         {
             if (ctx.Segments[i].Data.empty())
@@ -288,14 +328,6 @@ namespace Linker
             U64 dataOffset = AlignUp(buf.size(), 8);
             buf.resize(dataOffset);
             AppendData(buf, ctx.Segments[i].Data.data(), ctx.Segments[i].Data.size());
-            ctx.CoafSegments[i].FileOffset = dataOffset;
-        }
-
-        // Final patch of segment table with correct FileOffsets
-        if (segTableOffset > 0)
-        {
-            std::memcpy(buf.data() + segTableOffset, ctx.CoafSegments.data(),
-                        ctx.CoafSegments.size() * sizeof(Coaf::Segment));
         }
 
         ctx.OutputBuffer = std::move(buf);

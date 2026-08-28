@@ -59,9 +59,19 @@ namespace Linker
             return false;
         }
 
+        // Debug: print all segments
+        std::cerr << "Debug: " << ctx.Segments.size() << " segments:" << std::endl;
+        for (size_t i = 0; i < ctx.Segments.size(); ++i)
+        {
+            const auto &seg = ctx.Segments[i];
+            std::cerr << "  Segment[" << i << "]: perm=" << seg.Permissions
+                      << " imgOff=" << seg.ImageOffset
+                      << " memSize=" << seg.MemorySize
+                      << " dataSize=" << seg.Data.size() << std::endl;
+        }
+
         U64 maxEnd = 0;
         std::vector<std::pair<U64, U64>> memIntervals;
-        std::vector<std::pair<U64, U64>> fileIntervals;
 
         for (const auto &seg : ctx.Segments)
         {
@@ -108,15 +118,18 @@ namespace Linker
         }
 
         // Check export symbols
+        U64 strTabStart = ctx.MainTable.StringTableOffset;
+        U64 strTabEnd = strTabStart + ctx.MainTable.StringTableSize;
         std::set<std::string> exportNames;
+
         for (const auto &exp : ctx.CoafExports)
         {
-            if (exp.NameOffset >= ctx.StringTable.size())
+            if (exp.NameOffset < strTabStart || exp.NameOffset >= strTabEnd)
             {
-                std::cerr << "Validation error: export symbol name out of bounds" << std::endl;
+                std::cerr << "Validation error: export symbol name out of string table bounds" << std::endl;
                 return false;
             }
-            const char *name = reinterpret_cast<const char *>(ctx.StringTable.data() + exp.NameOffset);
+            const char *name = reinterpret_cast<const char *>(ctx.OutputBuffer.data() + exp.NameOffset);
             if (exportNames.count(name))
             {
                 std::cerr << "Validation error: duplicate export symbol: " << name << std::endl;

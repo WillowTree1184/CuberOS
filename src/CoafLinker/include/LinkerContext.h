@@ -31,6 +31,7 @@ namespace Linker
         U64 AddrAlign;
         U64 Type;
         U64 OffsetInFile;
+        U64 Size;
         bool IsBss;
         U64 CoafPermissions;
     };
@@ -99,6 +100,7 @@ namespace Linker
         std::vector<InputFile> InputFiles;
         std::vector<std::string> LibraryPaths;
         std::vector<std::string> Libraries;
+        std::string EntrySymbolName;
         std::string OutputPath;
         U64 TargetArchId;
 

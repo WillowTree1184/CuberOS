@@ -26,7 +26,9 @@ namespace Linker
 
 static void PrintUsage(const char *prog)
 {
-    std::cerr << "Usage: " << prog << " -o <output.coaf> <input1.o> [input2.o ...]" << std::endl;
+    std::cerr << "Usage: " << prog << " [options] -o <output.coaf> <input1.o> [input2.o ...]" << std::endl;
+    std::cerr << "Options:" << std::endl;
+    std::cerr << "  --entry <name>    Entry symbol name (default: main)" << std::endl;
 }
 
 int main(int argc, char *argv[])
@@ -38,6 +40,7 @@ int main(int argc, char *argv[])
     }
 
     Linker::Context ctx;
+    ctx.EntrySymbolName = "main";
     std::vector<std::string> inputs;
 
     for (int i = 1; i < argc; ++i)
@@ -46,6 +49,10 @@ int main(int argc, char *argv[])
         if (arg == "-o" && i + 1 < argc)
         {
             ctx.OutputPath = argv[++i];
+        }
+        else if (arg == "--entry" && i + 1 < argc)
+        {
+            ctx.EntrySymbolName = argv[++i];
         }
         else if (arg.substr(0, 2) == "-L")
         {

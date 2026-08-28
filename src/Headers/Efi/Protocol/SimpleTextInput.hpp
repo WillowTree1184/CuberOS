@@ -1,4 +1,4 @@
-// src/Launcher/Headers/Efi/Protocol/SimpleTextInput.hpp
+// src/Headers/Efi/Protocol/SimpleTextInput.hpp
 
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 WillowTree1184 <xucx_2020@163.com>
@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include "../Macros.hpp"
+#include "../Types.hpp"
 
 namespace efi
 {
@@ -65,51 +65,5 @@ namespace efi
             uint64 Revision;
             Status(efiapi *ReadKeyStroke)(struct SimpleTextInput *current, InputKey *key);
         };
-    }
-
-    Status TryGet(protocol::SimpleTextInput *simpleTextInput, uint16 output[3])
-    {
-        InputKey key;
-
-        Status status;
-        status = simpleTextInput->ReadKeyStroke(simpleTextInput, &key);
-        if (efi::IsError(status))
-        {
-            return status;
-        }
-
-        if (!key.UnicodeChar)
-        {
-            return efi::error::Unsupported;
-        }
-        else if (key.UnicodeChar == L'\r')
-        {
-            output[0] = L'\r';
-            output[1] = L'\n';
-            output[2] = L'\0';
-        }
-        else
-        {
-            output[0] = key.UnicodeChar;
-            output[1] = L'\0';
-        }
-
-        return efi::Success;
-    }
-
-    Status Get(protocol::SimpleTextInput *simpleTextInput, uint16 output[3])
-    {
-        while (efi::IsError(TryGet(simpleTextInput, output)))
-            ;
-        return efi::Success;
-    }
-
-    Status WaitAnyKey(protocol::SimpleTextInput *simpleTextInput)
-    {
-        uint16 output[3];
-        while (efi::IsError(TryGet(simpleTextInput, output)))
-            ;
-        return efi::Success;
-    }
-
-}
+    } // namespace coaf::protocol
+} // namespace coaf

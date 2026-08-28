@@ -9,11 +9,11 @@ BUILD_ROOT	?= $(CURDIR)/../../build/$(ARCH)
 SRC			?= $(CURDIR)
 INC_ROOT	:= $(SRC)/Headers
 
-LDFLAGS		:= -entry:Main
+L_CXXFLAGS	:= --entry Main -fPIC
 
 .PHONY: all build clean
 
-all: build clean
+all: build
 
 # Build
 build: Build/Preloader.app
@@ -22,8 +22,8 @@ build: Build/Preloader.app
 
 Build/%.app: %.cpp
 	@mkdir -p Build
-	$(CXX) "$<" -o "$@"
+	$(CXX) $(CXXFLAGS) $(L_CXXFLAGS) "$<" -o "$@"
 
 # Clean
 clean:
-	@rm -f "Launcher.o" "$(TARGET_EFI)" "$(TARGET_LIB)"
+	rm -rf Build

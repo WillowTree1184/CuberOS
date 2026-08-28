@@ -1,7 +1,12 @@
+// src/Headers/Efi/Protocol/File.hpp
+
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 WillowTree1184 <xucx_2020@163.com>
+
 #pragma once
 
 #include "../SystemTable.hpp"
-#include "../Macros.hpp"
+#include "../Types.hpp"
 
 namespace efi
 {
@@ -71,7 +76,7 @@ namespace efi
     namespace guid
     {
         inline constexpr Guid FileInfo = {0x9576e92, 0x6d3f, 0x11d2, {0x8e, 0x39, 0x0, 0xa0, 0xc9, 0x69, 0x72, 0x3b}};
-    }
+    } // namespace coaf::guid
 
     struct FileInfo
     {
@@ -102,76 +107,5 @@ namespace efi
             Status(efiapi *SetInfo)(File *current, const Guid *InformationType, uintn BufferSize, void *Buffer);
             Status(efiapi *Flush)(File *current);
         };
-    }
-
-    Status ReadFile(protocol::File *root, char16 *fileName, void **buffer, uintn *fileSize, SystemTable *systemTable)
-    {
-        Status status;
-        protocol::File *file = nullptr;
-
-        // Open
-        status = root->Open(root, &file, fileName, FileMode::Read, FileAttribute::None);
-        if (efi::IsError(status))
-        {
-            return status;
-        }
-
-        // Get size
-        uintn infoSize = 0;
-        status = file->GetInfo(file, &efi::guid::FileInfo, &infoSize, nullptr);
-        if (status != efi::error::BufferTooSmall)
-        {
-            file->Close(file);
-            return status;
-        }
-
-        void *infoBuffer = nullptr;
-        status = systemTable->BootServices->AllocatePool(efi::MemoryType::LoaderData, infoSize, &infoBuffer);
-        if (efi::IsError(status))
-        {
-            file->Close(file);
-            return status;
-        }
-
-        status = file->GetInfo(file, &efi::guid::FileInfo, &infoSize, infoBuffer);
-        if (efi::IsError(status))
-        {
-            systemTable->BootServices->FreePool(infoBuffer);
-            file->Close(file);
-            return status;
-        }
-
-        uintn actualSize = static_cast<uintn>(static_cast<FileInfo *>(infoBuffer)->FileSize);
-        systemTable->BootServices->FreePool(infoBuffer);
-
-        // Read
-        status = systemTable->BootServices->AllocatePool(efi::MemoryType::LoaderData, actualSize + sizeof(char16), buffer);
-        if (efi::IsError(status))
-        {
-            file->Close(file);
-            return status;
-        }
-
-        uintn readSize = actualSize;
-        status = file->Read(file, &readSize, *buffer);
-        file->Close(file);
-
-        if (efi::IsError(status))
-        {
-            systemTable->BootServices->FreePool(*buffer);
-            *buffer = nullptr;
-            return status;
-        }
-
-        if (readSize != actualSize)
-        {
-            systemTable->BootServices->FreePool(*buffer);
-            *buffer = nullptr;
-            return efi::error::DeviceError;
-        }
-
-        *fileSize = actualSize;
-
-        return efi::Success;
-    }
-}
+    } // namespace coaf::protocol
+} // namespace coaf

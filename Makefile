@@ -16,7 +16,7 @@ export ARCH
 BUILD_DIR				:= $(CURDIR)/Build
 export BUILD_ROOT		:= $(BUILD_DIR)/$(ARCH)
 export SRC				:= $(CURDIR)/src
-export GLOBAL_HEADERS	:= $(BUILD_DIR)/$(ARCH)
+export GLOBAL_HEADERS	:= $(CURDIR)/src/Headers
 
 # Global tool chain
 export CXX		:= $(SRC)/CoafLinker/scripts/coaf-clang
@@ -54,6 +54,7 @@ MKFLAG	:= -j$(( $(nproc) > 1 ? $(nproc) - 1 : 1 ))
 .PHONY: all info build $(MODULES) clean clean-module clean-build
 
 all: info clean-build build run
+	@echo "DONE"
 
 # Show Info
 info:
@@ -91,6 +92,7 @@ endif
 
 # clean
 clean: clean-module clean-build
+	@echo "DONE"
 
 clean-module:
 	@for module in $(MODULES); do \
@@ -103,4 +105,4 @@ clean-module:
 clean-build:
 	@echo
 	@echo "CLEAN	$(BUILD_DIR)"
-	@rm -rf "$(BUILD_DIR)"
+	rm -rf "$(BUILD_DIR)"

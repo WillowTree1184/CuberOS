@@ -1,4 +1,4 @@
-// src/Launcher/Headers/Efi/SystemTable.hpp
+// src/Headers/Efi/SystemTable.hpp
 
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 WillowTree1184 <xucx_2020@163.com>
@@ -8,7 +8,7 @@
 #pragma once
 
 #include "Protocol/Protocols.hpp"
-#include "Macros.hpp"
+#include "Types.hpp"
 
 namespace efi
 {
@@ -61,21 +61,6 @@ namespace efi
 
     // Runtime Services
     enum class ResetType : uint32;
-
-    struct Time
-    {
-        uint16 Year;
-        uint8 Month;
-        uint8 Day;
-        uint8 Hour;
-        uint8 Minute;
-        uint8 Second;
-        uint8 Pad1;
-        uint32 Nanosecond;
-        int16 TimeZone;
-        uint8 Daylight;
-        uint8 Pad2;
-    };
 
     struct TimeCapabilities
     {
@@ -227,4 +212,4 @@ namespace efi
         uintn NumberOfTableEntries;
         void *ConfigurationTable;
     };
-}
+} // namespace coaf

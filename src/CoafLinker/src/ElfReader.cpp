@@ -109,6 +109,7 @@ namespace Linker
             sec.Type = sh.Type;
             sec.OffsetInFile = sh.Offset;
             sec.IsBss = (sh.Type == Elf::ShtNoBits);
+            sec.Size = sh.Size;
 
             if (!sec.IsBss && sh.Size > 0 && sh.Offset + sh.Size <= file.RawData.size())
             {

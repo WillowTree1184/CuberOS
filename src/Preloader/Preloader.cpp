@@ -1,7 +1,5 @@
 void Main()
 {
-    while (true)
-    {
-        /* code */
-    }
+    __asm__ volatile("cli");
+    __asm__ volatile("sti");
 }

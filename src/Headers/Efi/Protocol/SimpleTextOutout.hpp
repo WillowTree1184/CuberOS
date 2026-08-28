@@ -1,4 +1,4 @@
-// src/Launcher/Headers/Efi/Protocol/SimpleTextOutout.hpp
+// src/Headers/Efi/Protocol/SimpleTextOutout.hpp
 
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 WillowTree1184 <xucx_2020@163.com>
@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include "../Macros.hpp"
+#include "../Types.hpp"
 
 namespace efi
 {
@@ -62,25 +62,5 @@ namespace efi
 
             SimpleTextOutputMode *mode;
         };
-    }
-
-    Status Print(protocol::SimpleTextOutput *simpleTextOutput, uint16 *target)
-    {
-        return simpleTextOutput->OutputString(simpleTextOutput, target);
-    }
-
-    Status ClearScreen(protocol::SimpleTextOutput *simpleTextOutput)
-    {
-        return simpleTextOutput->ClearScreen(simpleTextOutput);
-    }
-
-    inline Status SetTextColor(protocol::SimpleTextOutput *console, TextColor foreground, TextColor background)
-    {
-        return console->SetAttribute(console, MakeTextOutputAttribute(foreground, background));
-    }
-
-    inline Status ResetTextColor(protocol::SimpleTextOutput *console)
-    {
-        return console->SetAttribute(console, MakeTextOutputAttribute(TextColor::White, TextColor::Black));
-    }
-}
+    } // namespace coaf::protocol
+} // namespace coaf

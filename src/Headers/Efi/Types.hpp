@@ -1,4 +1,4 @@
-// src/Launcher/Headers/Efi/Macros.hpp
+// src/Headers/Efi/Types.hpp
 
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 WillowTree1184 <xucx_2020@163.com>
@@ -7,27 +7,23 @@
 
 #pragma once
 
+#include <Macros.hpp>
+
 #if !defined(__clang__) && !defined(__GNUC__)
 #error "Unsupported compiler"
 #endif
 
 #define efiapi __attribute__((ms_abi))
-#define compact __attribute__((packed))
-#define noreturn __attribute__((noreturn))
-#define unused __attribute__((unused))
-#define noinline __attribute__((noinline))
-#define aligned(x) __attribute__((aligned(x)))
-#define weak __attribute__((weak))
 
-#ifndef in
-#define in
-#endif
-#ifndef out
-#define out
-#endif
-#ifndef optional
-#define optional
-#endif
+// #ifndef in
+// #define in
+// #endif
+// #ifndef out
+// #define out
+// #endif
+// #ifndef optional
+// #define optional
+// #endif
 
 namespace efi
 {
@@ -135,4 +131,19 @@ namespace efi
         uint16 Data3;
         uint8 Data4[8];
     };
-}
+
+    struct Time
+    {
+        uint16 Year;
+        uint8 Month;
+        uint8 Day;
+        uint8 Hour;
+        uint8 Minute;
+        uint8 Second;
+        uint8 Pad1;
+        uint32 Nanosecond;
+        int16 TimeZone;
+        uint8 Daylight;
+        uint8 Pad2;
+    };
+} // namespace coaf

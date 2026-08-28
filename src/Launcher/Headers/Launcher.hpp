@@ -5,4 +5,6 @@
 
 #pragma once
 
-#include "Efi/Efi.hpp"
+#include <Efi/Efi.hpp>
+
+efi::Status efiapi Main(efi::Handle imageHandle, efi::SystemTable *systemTable);
