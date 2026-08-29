@@ -114,16 +114,6 @@ namespace efi
         return static_cast<intn>(s) < 0;
     }
 
-    inline uint16 *ToU16(const wchar_t *s) noexcept
-    {
-        return reinterpret_cast<uint16 *>(const_cast<wchar_t *>(s));
-    }
-
-    inline uint16 ToC16(wchar_t c) noexcept
-    {
-        return static_cast<uint16>(c);
-    }
-
     struct compact Guid
     {
         uint32 Data1;

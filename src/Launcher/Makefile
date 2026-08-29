@@ -8,8 +8,8 @@ BUILD_ROOT	?= $(CURDIR)/../../build/$(ARCH)
 
 INC_ROOT	:= $(CURDIR)/Headers
 
-L_CXX			:= clang
-L_CXXFLAGS		:= -ffreestanding -fno-exceptions -fno-rtti -fno-threadsafe-statics -fno-use-cxa-atexit -mno-red-zone -fshort-wchar -fno-stack-protector -fno-builtin -Wall -Wextra -O2 -std=c++20 -I "$(GLOBAL_HEADERS)" -target $(ARCH)-pc-win32-coff -I "$(INC_ROOT)"
+L_CXX			:= clang++
+L_CXXFLAGS		:= -flto=thin -ffreestanding -fno-exceptions -fno-rtti -fno-threadsafe-statics -fno-use-cxa-atexit -mno-red-zone -fshort-wchar -fno-stack-protector -fno-builtin -Wall -Wextra -O2 -std=c++20 -I "$(GLOBAL_HEADERS)" -target $(ARCH)-pc-win32-coff -I "$(INC_ROOT)"
 
 LD		:= lld-link
 LDFLAGS	:= -subsystem:efi_application -entry:Main -nodefaultlib -dll
@@ -22,6 +22,10 @@ else ifeq ($(ARCH),aarch64)
     TARGET_LIB	:= BootAA64.lib
 endif
 
+# Collect sources
+SRCS := $(wildcard *.cpp)
+OBJS := $(patsubst %.cpp, Bin/%.o, $(SRCS))
+
 .PHONY: all build clean
 
 all: build clean
@@ -31,7 +35,7 @@ build: Build/$(TARGET_EFI)
 	@mkdir -p $(BUILD_ROOT)/Efi/Boot/
 	@cp -r Build/* $(BUILD_ROOT)/Efi/Boot/
 
-Build/$(TARGET_EFI): Bin/Launcher.o Bin/Memory.o Bin/EfiStd.o
+Build/$(TARGET_EFI): $(OBJS)
 	@mkdir -p Build
 	$(LD) $(LDFLAGS) $^ -out:$@
 

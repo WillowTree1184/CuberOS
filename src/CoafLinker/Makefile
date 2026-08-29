@@ -5,7 +5,7 @@
 # AI-Assisted: This file was generated with assistance from KimiAI (https://www.kimi.com)
 
 L_CXX = clang++
-L_CXXFLAGS = -std=c++20 -O2 -Wall -Wextra -Iinclude
+L_CXXFLAGS = -std=c++20 -O2 -Wall -Wextra -Iinclude -flto=thin
 
 SRCS = src/main.cpp \
        src/ElfReader.cpp \

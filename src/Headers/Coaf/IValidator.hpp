@@ -1,4 +1,4 @@
-// src/Headers/Coaf/Coaf.hpp
+// src/Headers/Coaf/Validator.hpp
 
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 WillowTree1184 <xucx_2020@163.com>
@@ -9,7 +9,17 @@
 
 #include "Types.hpp"
 #include "Structure.hpp"
-#include "IValidator.hpp"
-#include "HeaderValidator.hpp"
 
-#include "V1/V1.hpp"
+namespace coaf
+{
+    class IValidator
+    {
+    public:
+        virtual bool Validate()
+        {
+            return false;
+        }
+
+        virtual ~IValidator() = default;
+    };
+} // namespace coaf

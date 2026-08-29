@@ -17,11 +17,11 @@ namespace coaf
         Package = 0x00474B5046414F43ULL
     };
 
-    struct CoafHeader
+    struct Header
     {
         Magic Magic;         /* 映像魔数 CoafMagicImage */
         U64 Version;         /* 见 6.1 */
         U64 MainTableOffset; /* FileOffset（见 4.1），指向 MainTable（见 6.2） */
     };
-    static_assert(sizeof(CoafHeader) == 24);
+    static_assert(sizeof(Header) == 24);
 } // namespace coaf

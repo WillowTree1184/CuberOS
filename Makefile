@@ -92,6 +92,7 @@ endif
 
 # clean
 clean: clean-module clean-build
+	@echo
 	@echo "DONE"
 
 clean-module:

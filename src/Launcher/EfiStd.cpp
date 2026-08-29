@@ -5,23 +5,82 @@ efi::SystemTable *gSystemTable = nullptr;
 efi::BootServices *gBootServices = nullptr;
 efi::Handle gImageHandle = nullptr;
 
+efi::char16 *launcherTitle = efi::ToU16(L"CuberOS Launcher Beta v1.0");
+
 namespace efi
 {
+    // Types
+    char16 *ToU16(const wchar_t *string) noexcept
+    {
+        return reinterpret_cast<uint16 *>(const_cast<wchar_t *>(string));
+    }
+
+    // String
+    uintn LengthOf(char16 *string)
+    {
+        uintn length = 0;
+        while (string[length] != L'\0')
+        {
+            length++;
+        }
+        return length;
+    }
+
+    uintn WidthOf(char16 *string)
+    {
+        uintn maxWidth = 0;
+        uintn currentWidth = 0;
+        for (uintn i = 0; string[i] != L'\0'; i++)
+        {
+            if (string[i] == L'\r' || string[i] == L'\n')
+            {
+                if (currentWidth > maxWidth)
+                {
+                    maxWidth = currentWidth;
+                }
+
+                currentWidth = 0;
+            }
+            else
+            {
+                currentWidth++;
+            }
+        }
+        if (currentWidth > maxWidth)
+        {
+            maxWidth = currentWidth;
+        }
+        return maxWidth;
+    }
+
+    uintn HeightOf(char16 *string)
+    {
+        uintn height = 1;
+        for (uintn i = 0; string[i] != L'\0'; i++)
+        {
+            if (string[i] == L'\n')
+            {
+                height++;
+            }
+        }
+        return height;
+    }
+
     // Input
-    Status TryGet(uint16 output[3])
+    Status TryGet(char16 output[3])
     {
         InputKey key;
 
         Status status;
         status = gSystemTable->ConsoleInput->ReadKeyStroke(gSystemTable->ConsoleInput, &key);
-        if (efi::IsError(status))
+        if (IsError(status))
         {
             return status;
         }
 
         if (!key.UnicodeChar)
         {
-            return efi::error::Unsupported;
+            return error::Unsupported;
         }
         else if (key.UnicodeChar == L'\r')
         {
@@ -35,28 +94,79 @@ namespace efi
             output[1] = L'\0';
         }
 
-        return efi::Success;
+        return Success;
     }
 
-    Status Get(uint16 output[3])
+    Status Get(char16 output[3])
     {
-        while (efi::IsError(TryGet(output)))
+        while (IsError(TryGet(output)))
             ;
-        return efi::Success;
+        return Success;
     }
 
     Status WaitAnyKey()
     {
         uint16 output[3];
-        while (efi::IsError(TryGet(output)))
+        while (IsError(TryGet(output)))
             ;
-        return efi::Success;
+        return Success;
     }
 
     // Output
-    Status Print(uint16 *target)
+    Status Print(char16 *target)
     {
         return gSystemTable->ConsoleOutput->OutputString(gSystemTable->ConsoleOutput, target);
+    }
+
+    Status PrintInCenter(char16 *target, uintn minWidth, long long heightOffset)
+    {
+        Status status;
+
+        uintn columns, rows;
+        status = gSystemTable->ConsoleOutput->QueryMode(gSystemTable->ConsoleOutput,
+                                                        gSystemTable->ConsoleOutput->mode->Mode,
+                                                        &columns, &rows);
+        if (IsError(status))
+        {
+            return status;
+        }
+
+        uintn targetWidth = WidthOf(target);
+        if (targetWidth < minWidth)
+        {
+            targetWidth = minWidth;
+        }
+
+        uintn diaplayColumn = targetWidth >= columns ? 0 : (columns - targetWidth) / 2;
+        uintn displayRow = rows / 2 - heightOffset;
+        gSystemTable->ConsoleOutput->SetCursorPosition(gSystemTable->ConsoleOutput, diaplayColumn, displayRow);
+
+        return gSystemTable->ConsoleOutput->OutputString(gSystemTable->ConsoleOutput, target);
+    }
+
+    Status PrintMessage(char16 *message)
+    {
+        Status status;
+
+        status = ClearScreen();
+        if (IsError(status))
+        {
+            return status;
+        }
+
+        status = PrintInCenter(launcherTitle, 0, 0);
+        if (IsError(status))
+        {
+            return status;
+        }
+
+        status = PrintInCenter(message, 0, -1);
+        if (IsError(status))
+        {
+            return status;
+        }
+
+        return Success;
     }
 
     Status ClearScreen()
@@ -79,9 +189,9 @@ namespace efi
     {
         Status status;
 
-        efi::protocol::SimpleFileSystem *simpleFileSystem;
-        status = gSystemTable->BootServices->LocateProtocol(&efi::guid::SimpleFileSystem, nullptr, (void **)&simpleFileSystem);
-        if (efi::IsError(status))
+        protocol::SimpleFileSystem *simpleFileSystem;
+        status = gSystemTable->BootServices->LocateProtocol(&guid::SimpleFileSystem, nullptr, (void **)&simpleFileSystem);
+        if (IsError(status))
         {
             Print(ToU16(L"LOCATE ERROR\r\n"));
             return status;
@@ -97,15 +207,15 @@ namespace efi
 
         // Open
         status = root->Open(root, &file, fileName, FileMode::Read, FileAttribute::None);
-        if (efi::IsError(status))
+        if (IsError(status))
         {
             return status;
         }
 
         // Get size
         uintn infoSize = 0;
-        status = file->GetInfo(file, &efi::guid::FileInfo, &infoSize, nullptr);
-        if (status != efi::error::BufferTooSmall)
+        status = file->GetInfo(file, &guid::FileInfo, &infoSize, nullptr);
+        if (status != error::BufferTooSmall)
         {
             file->Close(file);
             return status;
@@ -115,11 +225,11 @@ namespace efi
         if (infoBuffer == nullptr)
         {
             file->Close(file);
-            return efi::error::OutOfResources;
+            return error::OutOfResources;
         }
 
-        status = file->GetInfo(file, &efi::guid::FileInfo, &infoSize, infoBuffer);
-        if (efi::IsError(status))
+        status = file->GetInfo(file, &guid::FileInfo, &infoSize, infoBuffer);
+        if (IsError(status))
         {
             delete[] infoBuffer;
             file->Close(file);
@@ -134,14 +244,14 @@ namespace efi
         if (data == nullptr)
         {
             file->Close(file);
-            return efi::error::OutOfResources;
+            return error::OutOfResources;
         }
 
         uintn readSize = actualSize;
         status = file->Read(file, &readSize, data);
         file->Close(file);
 
-        if (efi::IsError(status))
+        if (IsError(status))
         {
             delete[] data;
             *buffer = nullptr;
@@ -152,7 +262,7 @@ namespace efi
         {
             delete[] data;
             *buffer = nullptr;
-            return efi::error::DeviceError;
+            return error::DeviceError;
         }
 
         // Null terminate for UTF-16
@@ -162,48 +272,47 @@ namespace efi
         *buffer = data;
         *fileSize = actualSize;
 
-        return efi::Success;
+        return Success;
     }
 
     // Error Handling
-    void noreturn efiapi ExitByError(efi::Status exitStatus, efi::uint16 *message)
+    void noreturn efiapi ExitByError(Status exitStatus, uint16 *message)
     {
-        efi::SetTextColor(efi::TextColor::White, efi::TextColor::LightRed);
 
-        efi::Print(L"\r\nError: ");
-        efi::Print(message);
+        PrintInCenter(launcherTitle, 0, 0);
+        SetTextColor(TextColor::White, TextColor::LightRed);
+        PrintInCenter(message, 0, -1);
+        ResetTextColor();
 
-        efi::ResetTextColor();
-
-        efi::Print(efi::ToU16(L"\r\nYou can Press:\r\n- [Q] to shutdown,\r\n- [R] to reboot,\r\n- [ESC] to reboot to Firmware UI,\r\n- [Enter] to exit Launcher.\r\n"));
+        PrintInCenter(ToU16(L"You can Press: [Q] to shutdown, [R] to reboot, [ESC] to Firmware UI, [Enter] to fall-through next."), 0, -2);
         while (true)
         {
-            efi::InputKey key;
+            InputKey key;
             gSystemTable->ConsoleInput->ReadKeyStroke(gSystemTable->ConsoleInput, &key);
             if (key.UnicodeChar == L'q' || key.UnicodeChar == L'Q')
             {
-                gSystemTable->RuntimeServices->ResetSystem(efi::ResetType::Shutdown, exitStatus, 0, nullptr);
+                gSystemTable->RuntimeServices->ResetSystem(ResetType::Shutdown, exitStatus, 0, nullptr);
             }
             else if (key.UnicodeChar == L'r' || key.UnicodeChar == L'R')
             {
-                gSystemTable->RuntimeServices->ResetSystem(efi::ResetType::Warm, exitStatus, 0, nullptr);
+                gSystemTable->RuntimeServices->ResetSystem(ResetType::Warm, exitStatus, 0, nullptr);
             }
-            else if (key.ScanCode == efi::KeyScanCode::Escape)
+            else if (key.ScanCode == KeyScanCode::Escape)
             {
-                enum class OsIndication : efi::uint64
+                enum class OsIndication : uint64
                 {
                     BootToFirmwareUI = 0x0000000000000001
                 };
                 OsIndication indications = OsIndication::BootToFirmwareUI;
 
                 gSystemTable->RuntimeServices->SetVariable(
-                    efi::ToU16(L"OsIndications"),
-                    &efi::guid::GlobalVariableGuid,
-                    efi::VariableAttribute::NonVolatile | efi::VariableAttribute::BootServiceAccess | efi::VariableAttribute::RuntimeAccess, // 0x07, // NonVolatile | BootServiceAccess | RuntimeAccess
+                    ToU16(L"OsIndications"),
+                    &guid::GlobalVariableGuid,
+                    VariableAttribute::NonVolatile | VariableAttribute::BootServiceAccess | VariableAttribute::RuntimeAccess, // 0x07, // NonVolatile | BootServiceAccess | RuntimeAccess
                     sizeof(indications),
                     &indications);
 
-                gSystemTable->RuntimeServices->ResetSystem(efi::ResetType::Warm, exitStatus, 0, nullptr);
+                gSystemTable->RuntimeServices->ResetSystem(ResetType::Warm, exitStatus, 0, nullptr);
             }
             else if (key.UnicodeChar == L'\r')
             {
